@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { supabase } from '../../supabase';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { supabase } from '../../supabase';
 
 function Registro() {
   const [formulario, setFormulario] = useState({
@@ -11,9 +10,20 @@ function Registro() {
     fechaNacimiento: '',
     telefono: '',
   });
-
   const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(true);
   const navigate = useNavigate();
+
+  // Si ya hay sesión, redirige a /
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && data.session.user) {
+        navigate('/');
+      } else {
+        setCargando(false);
+      }
+    });
+  }, [navigate]);
 
   const handleChange = (e) => {
     setFormulario({ ...formulario, [e.target.name]: e.target.value });
@@ -23,7 +33,6 @@ function Registro() {
     e.preventDefault();
     setError(null);
 
-    // 1. Crear usuario en Auth
     const { data, error: errorAuth } = await supabase.auth.signUp({
       email: formulario.correo,
       password: formulario.password,
@@ -34,29 +43,33 @@ function Registro() {
       return;
     }
 
-    const uid = data.user.id;
+    const uid = data?.user?.id;
 
-    // 2. Insertar en tabla "usuarios"
-    const { error: errorInsert } = await supabase.from("usuario").insert([
-      {
-        id: uid,
-        nombre: formulario.nombre,
-        correo: formulario.correo,
-        fecha_nacimiento: formulario.fechaNacimiento,
-        telefono: formulario.telefono,
-        roll: "usuario",
-      },
-    ]);
-
-    if (errorInsert) {
-      setError("Usuario creado pero error en tabla usuarios: " + errorInsert.message);
-    } else {
-      navigate("/login");
+    // Solo intenta insertar si hay uid
+    if (uid) {
+      const { error: errorInsert } = await supabase.from('usuario').insert([
+        {
+          id: uid,
+          nombre: formulario.nombre,
+          correo: formulario.correo,
+          fecha_nacimiento: formulario.fechaNacimiento,
+          telefono: formulario.telefono,
+          roll: 'usuario',
+        },
+      ]);
+      if (errorInsert) {
+        setError('Usuario creado pero error al guardar datos: ' + errorInsert.message);
+        return;
+      }
     }
+
+    navigate('/login');
   };
 
+  if (cargando) return <p>Cargando...</p>;
+
   return (
-    <section>
+    <div style={{ maxWidth: '400px', margin: 'auto', padding: '2rem' }}>
       <h2>Registro</h2>
       <form onSubmit={handleRegistro}>
         <input
@@ -66,14 +79,16 @@ function Registro() {
           value={formulario.nombre}
           onChange={handleChange}
           required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
         <input
           type="email"
           name="correo"
-          placeholder="Correo"
+          placeholder="Correo electrónico"
           value={formulario.correo}
           onChange={handleChange}
           required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
         <input
           type="password"
@@ -82,6 +97,7 @@ function Registro() {
           value={formulario.password}
           onChange={handleChange}
           required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
         <input
           type="date"
@@ -89,6 +105,7 @@ function Registro() {
           value={formulario.fechaNacimiento}
           onChange={handleChange}
           required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
         <input
           type="text"
@@ -97,13 +114,39 @@ function Registro() {
           value={formulario.telefono}
           onChange={handleChange}
           required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
-        <button type="submit">Registrarse</button>
+        <button
+          type="submit"
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          Registrarse
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/login')}
+          style={{
+            width: '100%',
+            marginTop: '1rem',
+            padding: '0.75rem',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          Ya tengo cuenta
+        </button>
       </form>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <h2>Ya tengo cuenta y quiero loguearme</h2>
-      <button onClick={() => navigate(`/login`)}>Login</button>
-    </section>
+      {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
+    </div>
   );
 }
 

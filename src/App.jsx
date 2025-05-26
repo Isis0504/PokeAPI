@@ -19,6 +19,7 @@ function App() {
 const [usuario, setUsuario] = useState(null);
 const [cargando, setCargando] = useState(true);
 
+
 useEffect(() => {
 async function verificarSesion() {
 const { data: { session } } = await supabase.auth.getSession();
